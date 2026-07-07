@@ -78,7 +78,7 @@ Tuning** (dwells and gains, editable any time), **Machine Build**
 
 ```bash
 npm install
-npm run dev     # http://localhost:3000
+npm run dev     # http://localhost:3001 (3000 is usually taken by CuttingMaschine)
 npm run lint    # typecheck
 npm run build
 ```

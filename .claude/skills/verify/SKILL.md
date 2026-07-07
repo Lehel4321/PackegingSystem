@@ -1,13 +1,13 @@
 # Verify: PackLine CP-6 (packaging line simulator)
 
 React + TS + Vite single-page HMI. Surface = browser GUI at
-`http://localhost:3000`.
+`http://localhost:3001` (3000 is left free for CuttingMaschine).
 
 ## Build & launch
 
 ```bash
 npm install
-npm run dev &        # vite on :3000
+npm run dev &        # vite on :3001
 npm run lint         # tsc --noEmit (CI concern, not verification)
 ```
 
