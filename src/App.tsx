@@ -7,11 +7,13 @@ import { PackingLog } from './components/PackingLog';
 import { BuildPanel } from './components/BuildPanel';
 import { ScopeView } from './components/ScopeView';
 import { FCLab } from './components/FCLab';
+import { IntroTour, shouldAutoOpenIntro } from './components/IntroTour';
 
 export default function App() {
   const [tab, setTab] = useState<'line' | 'history' | 'lab'>('line');
   const [showBuild, setShowBuild] = useState(false);
   const [showScope, setShowScope] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => shouldAutoOpenIntro());
 
   useEngineState(); // drives the PLC scan and binds React to engine updates
 
@@ -43,14 +45,24 @@ export default function App() {
             <TabBtn id="lab" label="FC Lab" />
           </nav>
         </div>
-        <button
-          onClick={() => setShowScope(!showScope)}
-          className={`text-xs font-bold uppercase px-3 py-1.5 rounded-full transition-colors border cursor-pointer
-            ${showScope ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/40'
-              : 'bg-transparent text-slate-500 border-slate-800 hover:text-slate-300'}`}
-        >
-          ◉ Scope
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowIntro(true)}
+            title="Interactive introduction to the machine"
+            className="text-xs font-bold uppercase px-3 py-1.5 rounded-full transition-colors border cursor-pointer
+              bg-transparent text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10"
+          >
+            ? Intro
+          </button>
+          <button
+            onClick={() => setShowScope(!showScope)}
+            className={`text-xs font-bold uppercase px-3 py-1.5 rounded-full transition-colors border cursor-pointer
+              ${showScope ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/40'
+                : 'bg-transparent text-slate-500 border-slate-800 hover:text-slate-300'}`}
+          >
+            ◉ Scope
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 p-5 overflow-auto">
@@ -84,6 +96,7 @@ export default function App() {
       </footer>
 
       {showBuild && <BuildPanel onClose={() => setShowBuild(false)} />}
+      {showIntro && <IntroTour onClose={() => setShowIntro(false)} />}
     </div>
   );
 }

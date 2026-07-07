@@ -260,19 +260,75 @@ export function LineCanvas() {
         }
       }
 
+      // ---- reject bin (below the belt at the gate) ----
+      // Drawn BEFORE the falling cartons so they render on top of the
+      // bin's front lip as they drop in.
+      const gx = X(outEnd);
+      const binTop = yc + 60;
+      const binBottom = yc + 120;
+      const binHalf = Math.min(70, cartonW * 0.6 + 12);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(gx - binHalf, binTop);
+      ctx.lineTo(gx - binHalf * 0.9, binBottom);
+      ctx.lineTo(gx + binHalf * 0.9, binBottom);
+      ctx.lineTo(gx + binHalf, binTop);
+      ctx.stroke();
+      // subtle floor gradient inside the bin
+      const g1 = ctx.createLinearGradient(0, binTop, 0, binBottom);
+      g1.addColorStop(0, 'rgba(51,65,85,0.1)');
+      g1.addColorStop(1, 'rgba(51,65,85,0.35)');
+      ctx.fillStyle = g1;
+      ctx.beginPath();
+      ctx.moveTo(gx - binHalf + 2, binTop + 1);
+      ctx.lineTo(gx - binHalf * 0.9 + 2, binBottom - 1);
+      ctx.lineTo(gx + binHalf * 0.9 - 2, binBottom - 1);
+      ctx.lineTo(gx + binHalf - 2, binTop + 1);
+      ctx.closePath();
+      ctx.fill();
+      txt(ctx, gx, binBottom + 12, 'REJECT BIN', st.rejects > 0 ? '#f87171' : '#64748b');
+
       // ---- cartons on the outfeed ----
       for (const c of engine.outfeed) {
-        drawCarton(ctx, X(outStart + c.left), yc, c.len * pxPerMm, c.fills, engine.recipe.fillCount,
-          c.sealed, c.labelA, c.labelB, c.len, c.reject, c.reason);
+        const cx = X(outStart + c.left);
+        const wPx = c.len * pxPerMm;
+        if (c.diverting) {
+          // Fall progress 0..1 over the 1.0 s animation, accelerating.
+          const prog = Math.max(0, Math.min(1, 1 - (c.divertT ?? 0) / 1.0));
+          const yOff = prog * prog * 78;   // gravity-ish drop into the bin
+          const angle = prog * 0.7;         // ~40° tilt as it tumbles
+          const alpha = prog > 0.85 ? Math.max(0, 1 - (prog - 0.85) / 0.15) : 1;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(cx, yc + yOff);
+          ctx.rotate(angle);
+          drawCarton(ctx, 0, 0, wPx, c.fills, engine.recipe.fillCount,
+            c.sealed, c.labelA, c.labelB, c.len, c.reject, '');
+          ctx.restore();
+        } else {
+          drawCarton(ctx, cx, yc, wPx, c.fills, engine.recipe.fillCount,
+            c.sealed, c.labelA, c.labelB, c.len, c.reject, c.reason);
+        }
       }
 
-      // ---- reject gate + bins at the outfeed end ----
-      const gx = X(outEnd);
+      // ---- reject gate at the outfeed end ----
       const gateHot = st.gateFlash > 0;
       vline(ctx, gx, yc - 44, yc + 30, gateHot ? '#ef4444' : '#475569', gateHot ? 3 : 1.5);
+      // gate paddle: rotates down when firing
+      ctx.save();
+      ctx.translate(gx, yc + 26);
+      ctx.rotate(gateHot ? -0.9 : -0.15);
+      ctx.strokeStyle = gateHot ? '#ef4444' : '#475569';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -22);
+      ctx.stroke();
+      ctx.restore();
       txt(ctx, gx, yc - 50, gateHot ? 'GATE ▼' : 'GATE', gateHot ? '#ef4444' : '#64748b');
-      txt(ctx, gx, yc + 44, st.packed + ' good', '#34d399');
-      txt(ctx, gx, yc + 58, st.rejects + ' rej', st.rejects > 0 ? '#f87171' : '#475569');
+      txt(ctx, gx + binHalf + 24, yc + 44, st.packed + ' good', '#34d399');
+      txt(ctx, gx, binBottom - 6, String(st.rejects), st.rejects > 0 ? '#f87171' : '#475569');
 
       // ---- axis / phase readout (top left) ----
       const phaseStr = !st.running ? 'IDLE'

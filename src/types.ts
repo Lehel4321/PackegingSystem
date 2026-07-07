@@ -171,6 +171,10 @@ export interface OutCarton {
   labelA?: number;
   labelB?: number;
   sealed: boolean;
+  /** Reject gate animation: TRUE while the carton is falling into the reject bin (belt has already committed the reject counter — this is visual only). */
+  diverting?: boolean;
+  /** Countdown timer for the divert-fall animation (s), from 0.6 s to 0. */
+  divertT?: number;
 }
 
 /** One row of the packing history. */
