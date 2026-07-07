@@ -18,195 +18,221 @@ interface Page {
 
 const pages: Page[] = [
   {
-    title: 'Welcome to PackLine CP-6',
+    title: 'Welcome',
     body: (
       <>
         <p>
-          You're looking at a real-time simulation of a PLC-driven carton packaging line. Every button, sensor and
-          interlock behaves the way it would on an actual machine — not a demo.
+          This is <b className="text-emerald-400">PackLine CP-6</b>, a live simulation of an industrial carton
+          packaging line — running as a virtual PLC right in your browser.
         </p>
         <p>
-          You can build recipes, tune the process, run production, break things on purpose, and see exactly what
-          happens end-to-end. Same control philosophy as its sister project <span className="text-emerald-400 font-semibold">CuttingMaschine</span>.
+          Every button, sensor and interlock on the screen behaves the way it would on a real factory machine.
+          Nothing here is a hard-coded demo: the line reacts to what you do, in real time.
+        </p>
+        <p className="text-slate-400 text-[13px] mt-3">
+          This tour takes about two minutes and covers what the line does, the vocabulary used on the screen, and a
+          few things to try. Feel free to skip it — you can reopen it any time from the header.
         </p>
       </>
     ),
   },
   {
-    title: 'The line at a glance',
+    title: 'What the line does',
     body: (
       <>
-        <p>Six stations sit in a chain. A blank enters at slot 0 and travels one pitch per cycle:</p>
+        <p>
+          It packs products into cartons. Six stations sit in a row along an indexing chain — think of it as a
+          conveyor that moves one step at a time:
+        </p>
         <div className="font-mono text-[13px] text-slate-300 bg-[#0b1017] border border-[#1c2736] rounded p-3 my-3 leading-relaxed">
           <span className="text-sky-400">ERECT</span> · <span className="text-amber-400">FILL</span> · <span className="text-violet-400">WEIGH</span> · <span className="text-emerald-400">SEAL</span> · <span className="text-pink-400">LABEL</span> · <span className="text-slate-400">DISCHARGE</span><br />
-          <span className="text-slate-500">└─ indexing chain (servo axis) ─┘ → outfeed belt → gate → good / reject</span>
+          <span className="text-slate-500">└──── indexing chain ────┘ → outfeed → gate → good / reject</span>
         </div>
         <p>
-          Each station acts on the carton in front of it. Slots without a carton (or without a device installed)
-          simply cost nothing.
+          A flat blank enters at the left, gets folded into a carton, filled with the right number of products,
+          weighed, sealed, labeled, and pushed onto the outfeed belt. Bad cartons are rejected at the gate.
         </p>
       </>
     ),
   },
   {
-    title: 'Two phases per cycle',
+    title: 'The two phases of a cycle',
     body: (
       <>
-        <p>Every cycle alternates two phases (watch the top-left status while the line runs):</p>
+        <p>Every cycle alternates two phases. Watch the status text in the top-left of the line view:</p>
         <ul className="mt-2 space-y-2">
           <li>
-            <b className="text-emerald-400">PROCESS DWELL</b> — the chain stands still. All stations act in
-            <span className="text-emerald-400"> parallel</span> on their cartons: the filler drops products one by
-            one, the seal head presses down, the labeler applies the label, and so on. The cycle waits for the
-            <span className="text-emerald-400"> slowest</span> station.
+            <b className="text-emerald-400">PROCESS DWELL</b> — the chain stands still. All the stations act in
+            <span className="text-emerald-400"> parallel</span> on the cartons in front of them: the filler drops
+            products one by one, the seal head presses down, and so on. The cycle waits for whichever station is
+            <span className="text-emerald-400"> slowest</span>.
           </li>
           <li>
-            <b className="text-cyan-400">INDEXING</b> — the servo chain moves exactly one pitch forward along a
-            jerk-limited S-curve, then process starts again.
+            <b className="text-cyan-400">INDEXING</b> — the chain moves forward by exactly one slot along a smooth
+            accelerate-cruise-brake curve, then the process phase starts again.
           </li>
         </ul>
       </>
     ),
-    hint: 'Open the Scope panel and you can literally see the two phases: the velocity trace pulses (index), and the digital tracks fire during the flat parts (process).',
+    hint: 'Open the Scope panel while the line is running — the velocity trace pulses (index moves) and the digital signal tracks fire during the flat parts (stations working).',
   },
   {
     title: 'What does "dwell" mean?',
     body: (
       <>
         <p>
-          <b className="text-amber-400">Dwell</b> = the time an actuator holds still while it does its job.
+          <b className="text-amber-400">Dwell</b> is the time an actuator holds still while it does its job.
+          It's a word you'll see all over the Tuning panel:
         </p>
         <div className="grid grid-cols-2 gap-2 text-[12px] font-mono mt-3">
-          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-emerald-400">Seal 0.6 s</span><br />press flaps closed</div>
-          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-amber-400">Fill 0.25 s/pc</span><br />per product drop</div>
-          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-violet-400">Weigh 0.5 s</span><br />scale settle time</div>
-          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-pink-400">Label 0.4 s</span><br />apply the label</div>
+          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-emerald-400">Seal dwell 0.6 s</span><br />how long the seal head presses to close the flaps</div>
+          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-amber-400">Fill 0.25 s/product</span><br />gap between each product drop</div>
+          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-violet-400">Weigh settle 0.5 s</span><br />time the scale needs to stabilize</div>
+          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2"><span className="text-pink-400">Label dwell 0.4 s</span><br />time to print &amp; apply the label</div>
         </div>
         <p className="mt-3">
-          Longer dwell = more reliable operation but slower cycle. All dwells live in the
-          <span className="text-cyan-400"> Tuning</span> panel.
+          Longer dwells make each station more reliable but slow the whole line down. That trade-off is exactly
+          what an automation engineer tunes on a real machine.
         </p>
       </>
     ),
   },
   {
-    title: 'The safety chain',
+    title: 'Getting the line moving',
     body: (
       <>
-        <p>No actuator moves without this sequence:</p>
+        <p>Just like a real machine, nothing moves until three things are true:</p>
         <ol className="list-decimal list-inside mt-2 space-y-1">
-          <li><b>Release the E-Stop</b> if latched (twist to release)</li>
-          <li>Press <b className="text-emerald-400">CONTROL ON</b> — enables machine control</li>
-          <li>Press <b className="text-emerald-400">▶ START</b> — production begins</li>
+          <li>The <b>E-Stop</b> is released (twist to release if it's latched)</li>
+          <li><b className="text-emerald-400">CONTROL ON</b> is enabled (the "power" for the actuators)</li>
+          <li><b className="text-emerald-400">▶ START</b> is pressed</li>
         </ol>
         <p className="mt-3">
-          <b className="text-red-400">E-Stop</b> is instant and non-resumable (production interrupted, cartons in
-          flight are lost). <b className="text-amber-400">Stop</b> is graceful: finishes every carton on the chain,
-          empties the outfeed, then goes idle. Use E-Stop only in emergencies.
+          Two ways to stop: <b className="text-red-400">E-Stop</b> is instant and drastic (any carton on the line
+          is lost). <b className="text-amber-400">Stop</b> is graceful — the line finishes every carton in
+          progress and empties the belt before going idle. On a real production line, only the E-Stop is used for
+          actual emergencies.
         </p>
       </>
     ),
-    hint: 'Try it: press Start, then E-Stop mid-run — banner turns red, Control-On is interlocked, restart clears the line.',
+    hint: 'Press Start, then hit the red E-Stop mushroom mid-run. Notice how Control-On stays disabled until the E-Stop is released. That interlock exists on every real machine.',
   },
   {
-    title: 'Servo motion + registration eye',
+    title: 'Smooth motion + a self-correcting eye',
     body: (
       <>
         <p>
-          The indexing chain is a real servo axis with a <b className="text-cyan-400">jerk-limited S-curve</b> — the
-          same motion solver ported from your <span className="text-emerald-400">MotionProfileSolver</span>.
+          The indexing chain is modeled as an actual servo motor. Each move follows a
+          <b className="text-cyan-400"> jerk-limited S-curve</b> — the standard motion profile in industrial
+          servo drives — so it accelerates smoothly instead of jerking to speed.
         </p>
         <p>
-          A real chain drifts under mechanical slip. The <b className="text-cyan-400">registration photo-eye</b>
-          watches the <em>actual</em> lug position (not the encoder) and corrects the stop target every index —
-          a live touch-probe correction.
+          Real chains also slip a little under load. The <b className="text-cyan-400">registration photo-eye</b>
+          watches the actual chain position (not the encoder) and corrects the stop target on every single move.
+          It's the same "touch probe" trick used on real packaging equipment.
         </p>
       </>
     ),
-    hint: 'Try it: turn Control OFF → Machine Build → uncheck the Registration Eye → Tuning → set Chain Slip to 5. Watch cartons drift off their slots and reject as "misplaced". Turn the eye back on and the drift vanishes.',
+    hint: 'To see it fail: turn Control OFF → open Machine Build → uncheck Registration Eye. Then open Tuning and set Chain Slip to 5. Restart the line and cartons will drift off their slot centers and reject as "misplaced". Turn the eye back on and the drift disappears.',
   },
   {
-    title: 'The check-weigher is your ONLY quality gate',
+    title: 'How the line detects bad cartons',
     body: (
       <>
         <p>
-          The line is <b className="text-red-400">blind</b> to bad products, short fills and wrong counts — unless
-          the check-weigher is installed. Without it, a bad carton walks straight into the good bin (the log still
-          records the true weight, so the mistake shows up on paper).
+          The <b className="text-violet-400">check-weigher</b> is the line's only quality inspector. It weighs
+          every carton and compares against the recipe's target weight — if a product is missing, wrong, or way
+          too light, the weigher flags the carton and the gate at the end rejects it.
+        </p>
+        <p className="text-slate-400 text-[13px] mt-2">
+          Interesting detail: if the check-weigher is removed from the machine build, the line becomes
+          <b className="text-red-400"> blind</b>. Bad cartons walk straight into the good bin. The packing history
+          still records the true weight, so the mistake is visible on paper — but the line itself can't act on it.
         </p>
         <div className="bg-amber-950/30 border border-amber-700/50 rounded p-3 text-[12px] mt-3">
-          <b className="text-amber-400">Try it:</b> press <b>Inject Bad Product</b>, wait a few seconds, and watch
-          the weigher catch it. The reject falls into the bin at the gate. The Packing history shows a red
-          <span className="text-red-400"> ✕ weight</span> row with the deviation in grams.
+          <b className="text-amber-400">Try it →</b> press <b>Inject Bad Product</b>. A few seconds later the
+          weigher catches it and the reject tumbles into the bin at the gate. The Packing history tab shows a red
+          <span className="text-red-400"> ✕ WEIGHT</span> row with the deviation in grams.
         </div>
       </>
     ),
   },
   {
-    title: 'Three-level configuration',
+    title: 'Three levels of configuration',
     body: (
       <>
-        <p>Same discipline as a real machine — three tiers, each with its own interlock:</p>
+        <p>The settings are split into three tiers — same discipline used on real machines:</p>
         <div className="space-y-2 mt-2">
           <div className="bg-[#0b1017] border-l-2 border-sky-500 pl-3 py-1">
-            <b className="text-sky-400">Recipe</b> — the article (product count, weights, carton size, label
-            position). Editable only while <b>stopped</b> (you don't change the product mid-run).
+            <b className="text-sky-400">Recipe</b> — the article being packed (how many products per carton,
+            weights, carton size, label position). Editable only while the line is <b>stopped</b> — you don't
+            change the product mid-run.
           </div>
           <div className="bg-[#0b1017] border-l-2 border-cyan-500 pl-3 py-1">
-            <b className="text-cyan-400">Tuning</b> — dwell times, gains, diagnostics. Editable <b>any time</b>.
+            <b className="text-cyan-400">Tuning</b> — dwell times, belt speeds, tolerances. Adjustable
+            <b> any time</b>, even while packing.
           </div>
           <div className="bg-[#0b1017] border-l-2 border-slate-500 pl-3 py-1">
-            <b className="text-slate-300">Machine Build</b> — physical build (chain pitch, installed devices, servo
-            motor data). Editable only with <b>Control OFF</b> (commissioning mode — you don't unbolt a station on
-            a running line).
+            <b className="text-slate-300">Machine Build</b> — the physical machine (chain pitch, which devices are
+            installed, servo motor data). Editable only with <b>Control OFF</b> — you don't unbolt a station on a
+            live line.
           </div>
         </div>
       </>
     ),
   },
   {
-    title: 'Break things safely',
+    title: 'Things to try',
     body: (
       <>
-        <p>Every operator button on the panel does something real. Combine them to see how devices interact:</p>
+        <p>Every button on the panel does something real. Some experiments to get you started:</p>
         <div className="grid grid-cols-1 gap-2 mt-2 text-[12px]">
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2">
-            <b className="text-red-400">Inject Bad Product</b> — queues a wrong-weight product for the filler.
-            Caught by the weigher (if installed). Blind on a line without it.
+            <b className="text-red-400">Inject Bad Product</b> — the weigher catches it, watch the reject fall
+            into the bin.
           </div>
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2">
-            <b className="text-orange-400">End Supply</b> — cuts the hopper down to a small rest. The hopper-low
-            logic kicks in: 'stop' halts at the cycle boundary, 'runout' packs every carton the rest can still
-            fill — no short-filled cartons ever leave the machine.
+            <b className="text-orange-400">End Supply</b> — the hopper runs low. In "runout" mode the line packs
+            every carton it can still fill completely, then stops cleanly — no half-filled cartons ever leave the
+            machine.
           </div>
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2">
-            <b className="text-red-400">E-Stop mushroom</b> — instant halt. Try it and watch the interlocks
-            protect the restart.
+            <b className="text-red-400">E-Stop</b> mid-run — instant halt, then observe how the safety
+            interlocks make you restart properly.
+          </div>
+          <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2">
+            <b className="text-sky-400">Add Chain Slip</b> (Tuning) with the registration eye disabled (Machine
+            Build) — watch cartons drift off their slots.
           </div>
         </div>
       </>
     ),
   },
   {
-    title: 'Debugging tools + you\'re ready',
+    title: 'Under the hood',
     body: (
       <>
-        <div className="space-y-2">
+        <p>Three tools for looking deeper into how the line runs:</p>
+        <div className="space-y-2 mt-2">
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2 text-[12px]">
-            <b className="text-cyan-400">◉ Scope</b> — logic analyzer: chain velocity + every station's digital
-            output. Pause, drag to zoom, drop A/B cursors to measure Δt.
+            <b className="text-cyan-400">◉ Scope</b> (top-right) — a live logic analyzer. Chain velocity and every
+            station's digital signal, with pause, drag-to-zoom, and A/B cursors for measuring timings.
           </div>
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2 text-[12px]">
-            <b className="text-emerald-400">FC Lab</b> — run any function block (indexer, weigher, hopper, …) in
-            isolation against a fresh data block. The test bench.
+            <b className="text-emerald-400">FC Lab</b> tab — run any single control function block (the indexer,
+            the weigher, the hopper watchdog, …) in isolation against a fresh data snapshot. Effectively an
+            in-browser test bench.
           </div>
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2 text-[12px]">
-            <b className="text-slate-300">Packing history</b> — per-carton log with weight deviation, applied vs.
-            theoretical label position, reject reason.
+            <b className="text-slate-300">Packing history</b> tab — one row per carton with weight deviation,
+            applied vs. theoretical label position, and reject reasons.
           </div>
         </div>
         <p className="mt-4 text-emerald-400 text-center font-semibold">
-          You can reopen this tour any time from the <b>? Intro</b> button in the header.
+          Enjoy exploring the line.
+        </p>
+        <p className="text-slate-500 text-[11px] text-center mt-1">
+          The <b>? Intro</b> button in the header reopens this tour any time.
         </p>
       </>
     ),
