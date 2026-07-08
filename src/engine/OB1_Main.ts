@@ -132,6 +132,9 @@ export function OB1_CyclicScan(db: PackagingEngine, dt: number) {
       st.mvTip = 0;
       st.braking = false;
       st.brakeD = st.D + db.config.pitch;
+      // No two moves slip alike: sample this move's slip variance
+      // (±20 % around the set diagnostics value, see FC_Indexer).
+      st.moveSlipRand = 0.8 + Math.random() * 0.4;
     }
     return;
   }

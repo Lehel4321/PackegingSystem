@@ -29,6 +29,10 @@ function niceStep(span: number) {
   return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p;
 }
 
+function easeOut(t: number) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 /**
  * Draw one carton, centered at pixel cx on the chain row.
  * Renders the body, the products inside, open flaps / seal tape, the
@@ -260,49 +264,64 @@ export function LineCanvas() {
         }
       }
 
-      // ---- reject bin (below the belt at the gate) ----
-      // Drawn BEFORE the falling cartons so they render on top of the
-      // bin's front lip as they drop in.
-      const gx = X(outEnd);
-      const binTop = yc + 60;
-      const binBottom = yc + 120;
-      const binHalf = Math.min(70, cartonW * 0.6 + 12);
+      // ---- reject pusher station (before the belt end) + reject lane ----
+      // Real layout: a pneumatic side pusher sits mid-belt and shoves
+      // rejects perpendicular onto a lane next to the belt; good cartons
+      // pass straight through to the bin at the end. In this side view
+      // the perpendicular push is rendered as a controlled slide toward
+      // the viewer (down, slightly larger) — no tumbling, no falling.
+      const gateMm = outStart + engine.rejectGatePos();
+      const gx = X(gateMm);
+      const gateHot = st.gateFlash > 0;
+      const yLane = yc + 48;
+
+      // reject lane: short roller shelf in front of the belt
+      const laneA = X(gateMm - 260), laneB = X(gateMm + 120);
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(gx - binHalf, binTop);
-      ctx.lineTo(gx - binHalf * 0.9, binBottom);
-      ctx.lineTo(gx + binHalf * 0.9, binBottom);
-      ctx.lineTo(gx + binHalf, binTop);
+      ctx.moveTo(laneA, yLane + 24);
+      ctx.lineTo(laneB, yLane + 24);
       ctx.stroke();
-      // subtle floor gradient inside the bin
-      const g1 = ctx.createLinearGradient(0, binTop, 0, binBottom);
-      g1.addColorStop(0, 'rgba(51,65,85,0.1)');
-      g1.addColorStop(1, 'rgba(51,65,85,0.35)');
-      ctx.fillStyle = g1;
-      ctx.beginPath();
-      ctx.moveTo(gx - binHalf + 2, binTop + 1);
-      ctx.lineTo(gx - binHalf * 0.9 + 2, binBottom - 1);
-      ctx.lineTo(gx + binHalf * 0.9 - 2, binBottom - 1);
-      ctx.lineTo(gx + binHalf - 2, binTop + 1);
-      ctx.closePath();
-      ctx.fill();
-      txt(ctx, gx, binBottom + 12, 'REJECT BIN', st.rejects > 0 ? '#f87171' : '#64748b');
+      ctx.fillStyle = '#334155';
+      for (let x = laneA + 6; x < laneB - 4; x += 16) {
+        ctx.beginPath(); ctx.arc(x, yLane + 21, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      txt(ctx, (laneA + laneB) / 2, yLane + 38, 'REJECT LANE · ' + st.rejects, st.rejects > 0 ? '#f87171' : '#64748b');
+
+      // pusher cylinder above the belt; the plate follows the carton out
+      // and retracts (extension driven by the push-out progress)
+      let plateP = 0;
+      for (const c of engine.outfeed) {
+        if (!c.diverting) continue;
+        const p = Math.max(0, Math.min(1, 1 - (c.divertT ?? 0) / 1.0));
+        const ext = p < 0.35 ? easeOut(p / 0.35) : p < 0.7 ? 1 - (p - 0.35) / 0.35 : 0;
+        plateP = Math.max(plateP, ext);
+      }
+      ctx.strokeStyle = gateHot ? '#ef4444' : '#475569';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(gx - 16, yc - 62, 32, 14); // pneumatic cylinder body
+      const rodLen = 12 + plateP * 26;
+      vline(ctx, gx, yc - 48, yc - 48 + rodLen, gateHot ? '#ef4444' : '#475569', 2.5); // piston rod
+      ctx.fillStyle = gateHot ? '#ef4444' : '#475569';
+      ctx.fillRect(gx - 12, yc - 47 + rodLen, 24, 3); // pusher plate
+      txt(ctx, gx, yc - 68, gateHot ? 'PUSHER ▶ OUT' : 'REJECT PUSHER', gateHot ? '#ef4444' : '#64748b');
 
       // ---- cartons on the outfeed ----
       for (const c of engine.outfeed) {
         const cx = X(outStart + c.left);
         const wPx = c.len * pxPerMm;
         if (c.diverting) {
-          // Fall progress 0..1 over the 1.0 s animation, accelerating.
-          const prog = Math.max(0, Math.min(1, 1 - (c.divertT ?? 0) / 1.0));
-          const yOff = prog * prog * 78;   // gravity-ish drop into the bin
-          const angle = prog * 0.7;         // ~40° tilt as it tumbles
-          const alpha = prog > 0.85 ? Math.max(0, 1 - (prog - 0.85) / 0.15) : 1;
+          // Push-out progress 0..1 over the 1.0 s animation. The carton
+          // slides off the belt onto the lane in the first 70 %, rests,
+          // then fades out (it has left the machine's tracking).
+          const p = Math.max(0, Math.min(1, 1 - (c.divertT ?? 0) / 1.0));
+          const slide = easeOut(Math.min(1, p / 0.7));
+          const alpha = p > 0.85 ? Math.max(0, 1 - (p - 0.85) / 0.15) : 1;
           ctx.save();
           ctx.globalAlpha = alpha;
-          ctx.translate(cx, yc + yOff);
-          ctx.rotate(angle);
+          ctx.translate(cx, yc + slide * 48);
+          ctx.scale(1 + 0.06 * slide, 1 + 0.06 * slide);
           drawCarton(ctx, 0, 0, wPx, c.fills, engine.recipe.fillCount,
             c.sealed, c.labelA, c.labelB, c.len, c.reject, '');
           ctx.restore();
@@ -312,23 +331,10 @@ export function LineCanvas() {
         }
       }
 
-      // ---- reject gate at the outfeed end ----
-      const gateHot = st.gateFlash > 0;
-      vline(ctx, gx, yc - 44, yc + 30, gateHot ? '#ef4444' : '#475569', gateHot ? 3 : 1.5);
-      // gate paddle: rotates down when firing
-      ctx.save();
-      ctx.translate(gx, yc + 26);
-      ctx.rotate(gateHot ? -0.9 : -0.15);
-      ctx.strokeStyle = gateHot ? '#ef4444' : '#475569';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, -22);
-      ctx.stroke();
-      ctx.restore();
-      txt(ctx, gx, yc - 50, gateHot ? 'GATE ▼' : 'GATE', gateHot ? '#ef4444' : '#64748b');
-      txt(ctx, gx + binHalf + 24, yc + 44, st.packed + ' good', '#34d399');
-      txt(ctx, gx, binBottom - 6, String(st.rejects), st.rejects > 0 ? '#f87171' : '#475569');
+      // ---- good bin at the belt end ----
+      vline(ctx, X(outEnd), yc - 40, yc + 30, '#475569', 1.5);
+      txt(ctx, X(outEnd), yc - 46, 'GOOD BIN', '#64748b');
+      txt(ctx, X(outEnd), yc + 44, String(st.packed), '#34d399');
 
       // ---- axis / phase readout (top left) ----
       const phaseStr = !st.running ? 'IDLE'

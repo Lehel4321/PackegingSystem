@@ -268,10 +268,11 @@ export function FCLab() {
     for (let i = 0; i < 100; i++) FC_Outfeed(db, 1200, 0.001);
 
     setOutput({
+      pusherAt_mm: db.rejectGatePos(),
       packed: db.state.packed,
       rejects: db.state.rejects,
       cartonsLeftOnBelt: db.outfeed,
-      expected: 'both cartons sorted at the gate: packed=1, rejects=1',
+      expected: 'packed=1, rejects=1; the reject stays visible while its push-out animation runs (diverting=true)',
     });
     setDbState(db);
   };

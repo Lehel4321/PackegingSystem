@@ -96,8 +96,14 @@ export function FC_Indexer(db: PackagingEngine, dt: number) {
   // Network 4: Advance the PHYSICAL chain. On a real line the drive can
   // slip against the chain (stretch, worn sprocket), so true physical
   // advance can lag the encoder — params.slipPct simulates that for
-  // diagnostics. The cartons ride rigidly on the chain lugs.
-  const dPhys = dD * (1 - db.params.slipPct / 100);
+  // diagnostics. Slip is an INERTIAL effect: it happens mostly while
+  // the load torque is high (accelerating/braking) and much less at
+  // cruise, and no two moves slip exactly alike (st.moveSlipRand,
+  // sampled per move by OB1). This is why the registration correction
+  // is different on every index instead of a constant.
+  const aFrac = Math.min(1, Math.abs(st.a) / A);
+  const sEff = (db.params.slipPct / 100) * (0.35 + 0.65 * aFrac) * st.moveSlipRand;
+  const dPhys = dD * (1 - sEff);
   st.tip += dPhys;
   st.mvTip += dPhys;
   for (const c of db.cartons) c.x += dPhys;

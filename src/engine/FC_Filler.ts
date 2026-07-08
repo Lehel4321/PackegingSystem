@@ -48,8 +48,13 @@ export function FC_Filler(db: PackagingEngine) {
       bad = true;
       w = db.recipe.prodWeight * db.params.badWeightPct / 100;
     } else {
-      // Real products scatter a little around nominal (±1.2 %)
-      w = db.recipe.prodWeight * (1 + (Math.random() - 0.5) * 0.024);
+      // Real product weight scatters NORMALLY around nominal (σ = 0.5 %)
+      // — a gaussian, not a uniform band: most products land close to
+      // nominal, the occasional one strays further out.
+      const u1 = Math.max(1e-12, Math.random());
+      const u2 = Math.random();
+      const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      w = db.recipe.prodWeight * (1 + 0.005 * gauss);
     }
     c.fills.push({ w, bad });
     if (db.hopperRemaining !== Infinity) db.hopperRemaining--;

@@ -151,8 +151,8 @@ const pages: Page[] = [
         </p>
         <div className="bg-amber-950/30 border border-amber-700/50 rounded p-3 text-[12px] mt-3">
           <b className="text-amber-400">Try it →</b> press <b>Inject Bad Product</b>. A few seconds later the
-          weigher catches it and the reject tumbles into the bin at the gate. The Packing history tab shows a red
-          <span className="text-red-400"> ✕ WEIGHT</span> row with the deviation in grams.
+          weigher catches it and the pusher shoves the carton off the belt onto the reject lane. The Packing
+          history tab shows a red <span className="text-red-400"> ✕ WEIGHT</span> row with the deviation in grams.
         </div>
       </>
     ),
@@ -188,8 +188,8 @@ const pages: Page[] = [
         <p>Every button on the panel does something real. Some experiments to get you started:</p>
         <div className="grid grid-cols-1 gap-2 mt-2 text-[12px]">
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2">
-            <b className="text-red-400">Inject Bad Product</b> — the weigher catches it, watch the reject fall
-            into the bin.
+            <b className="text-red-400">Inject Bad Product</b> — the weigher catches it, watch the pusher kick
+            the carton off the belt.
           </div>
           <div className="bg-[#0b1017] border border-[#1c2736] rounded p-2">
             <b className="text-orange-400">End Supply</b> — the hopper runs low. In "runout" mode the line packs

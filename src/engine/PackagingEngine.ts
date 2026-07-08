@@ -108,7 +108,7 @@ export class PackagingEngine {
   public state: MachineState = {
     controlOn: false, estop: false, needsReset: false, supplyLow: false,
     running: false, phase: 'process', simTime: 0,
-    D: 0, v: 0, a: 0, tip: 0, mvD: 0, mvTip: 0, moveStartD: 0,
+    D: 0, v: 0, a: 0, tip: 0, mvD: 0, mvTip: 0, moveStartD: 0, moveSlipRand: 1,
     braking: false, brakeD: 0, regFault: false,
     procElapsed: 0, procDwell: 0,
     count: 0, packed: 0, rejects: 0, beltScroll: 0,
@@ -159,6 +159,14 @@ export class PackagingEngine {
 
   /** Outfeed belt speed (mm/s). */
   public outSpeed() { return this.recipe.spd * this.params.outFac; }
+
+  /**
+   * Travel position of the reject pusher on the outfeed (mm from the
+   * discharge point). Sits before the belt end: rejects are pushed
+   * sideways onto the reject lane here, good cartons continue straight
+   * into the good bin at the end — like on a real line.
+   */
+  public rejectGatePos() { return Math.max(60, this.config.outLen - 200); }
 
   /** Nominal gross carton weight for the current recipe (g). */
   public targetWeight() { return this.recipe.tare + this.recipe.fillCount * this.recipe.prodWeight; }
@@ -369,6 +377,7 @@ export class PackagingEngine {
     this.state.mvD = 0;
     this.state.mvTip = 0;
     this.state.moveStartD = 0;
+    this.state.moveSlipRand = 1;
     this.drift = 0;
     this.state.braking = false;
     this.state.brakeD = 0;

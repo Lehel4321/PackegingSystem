@@ -171,9 +171,9 @@ export interface OutCarton {
   labelA?: number;
   labelB?: number;
   sealed: boolean;
-  /** Reject gate animation: TRUE while the carton is falling into the reject bin (belt has already committed the reject counter — this is visual only). */
+  /** TRUE while the reject pusher is shoving the carton perpendicular off the belt onto the reject lane (the reject counter has already committed at the pusher signal — this is visual only). */
   diverting?: boolean;
-  /** Countdown timer for the divert-fall animation (s), from 0.6 s to 0. */
+  /** Countdown timer for the push-out animation (s), from 1.0 s to 0. */
   divertT?: number;
 }
 
@@ -231,6 +231,13 @@ export interface MachineState {
   mvD: number;   // encoder travel of the move in progress
   mvTip: number; // physical travel of the move in progress
   moveStartD: number;
+  /**
+   * Per-move slip variance factor (0.8..1.2), sampled by OB1 at the
+   * start of every index. A real chain never slips the same amount
+   * twice — this is what makes the registration correction different
+   * on every move instead of a constant.
+   */
+  moveSlipRand: number;
   /** TRUE while ramping down after the registration eye tripped. */
   braking: boolean;
   /** Encoder position at which the chain reaches standstill. */
