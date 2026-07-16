@@ -195,6 +195,25 @@ export interface LogEntry {
   recipe?: { name: string; fillCount: number; cartonLen: number; labelAt: number };
 }
 
+/**
+ * One sample of the PLC trace recorder (see OB1 Network 0). Recorded at
+ * scan resolution (decimated to 4 ms) INSIDE the PLC cycle — never in
+ * the HMI's render loop, where fast servo ramps would alias into fake
+ * instant jumps. `t` is machine time in ms (state.simTime).
+ */
+export interface ScopeSample {
+  t: number;
+  v: number;      // index axis velocity (mm/s)
+  idx: boolean;   // index move in progress
+  fill: boolean;  // filler drop
+  weigh: boolean; // check-weigher reading
+  seal: boolean;  // seal head down
+  label: boolean; // label applicator
+  gate: boolean;  // reject pusher fired
+  low: boolean;   // hopper LOW latched
+  reg: boolean;   // registration eye / braking
+}
+
 export interface MachineState {
   /**
    * Machine control enabled (control voltage on). FALSE after power-up

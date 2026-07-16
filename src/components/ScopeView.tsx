@@ -1,26 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { engine } from '../engine/PackagingEngine';
+import { ScopeSample } from '../types';
 
-const MAX_HISTORY_MS = 120000; // 2 minutes
+// The trace itself is recorded INSIDE the PLC cycle (OB1 Network 1a,
+// 4 ms resolution) into engine.scopeTrace — this panel only reads it.
+// Recording at the HMI framerate instead would alias the servo ramps
+// into fake instant jumps. The time axis is MACHINE time (simTime),
+// exactly like a real drive scope bound to the PLC.
 
-interface Sample {
-  t: number;
-  v: number;      // chain velocity (analog)
-  idx: boolean;   // index move in progress
-  fill: boolean;  // filler drop
-  weigh: boolean; // check-weigher reading
-  seal: boolean;  // seal head down
-  label: boolean; // label applicator
-  gate: boolean;  // reject gate fired
-  low: boolean;   // hopper LOW latched
-  reg: boolean;   // registration eye / braking
-}
-
-// Global buffer so we don't lose data when the panel unmounts or re-renders
-let globalSamples: Sample[] = [];
-let isCollecting = true;
-
-const SIGNALS: { key: keyof Sample; label: string; color: string; when?: () => boolean }[] = [
+const SIGNALS: { key: keyof ScopeSample; label: string; color: string; when?: () => boolean }[] = [
   { key: 'idx', label: 'INDEX MOVE', color: '#34d399' },
   { key: 'reg', label: 'REG EYE / BRAKE', color: '#22d3ee', when: () => engine.config.hasReg },
   { key: 'fill', label: 'FILL DROP', color: '#f59e0b' },
@@ -34,8 +22,8 @@ const SIGNALS: { key: keyof Sample; label: string; color: string; when?: () => b
 export function ScopeView({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [paused, setPaused] = useState(!isCollecting);
-  const [timeSpan, setTimeSpan] = useState(10000); // 10s default
+  const [paused, setPaused] = useState(false);
+  const [timeSpan, setTimeSpan] = useState(5000); // 5s default (~2 cycles)
   const [customView, setCustomView] = useState<{ tMin: number, tMax: number } | null>(null);
 
   // Cursors (X pixel positions)
@@ -44,17 +32,19 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
   const [selectedSignal, setSelectedSignal] = useState<string>('v');
 
   // Live cursor values
-  const [cursorData, setCursorData] = useState<{ A: { t: number; sample: Sample } | null; B: { t: number; sample: Sample } | null } | null>(null);
+  const [cursorData, setCursorData] = useState<{ A: { t: number; sample: ScopeSample } | null; B: { t: number; sample: ScopeSample } | null } | null>(null);
 
   // Zoom box state
   const [dragZoomStart, setDragZoomStart] = useState<number | null>(null);
   const [dragZoomCurrent, setDragZoomCurrent] = useState<number | null>(null);
 
   const currentViewRef = useRef<{ tMin: number, tMax: number }>({ tMin: 0, tMax: 0 });
+  // Machine time (ms) the display is frozen at while paused. The PLC
+  // keeps recording; pause only freezes the view.
+  const frozenNowRef = useRef(0);
 
-  // Toggle pause
+  // Leaving pause discards any zoom view
   useEffect(() => {
-    isCollecting = !paused;
     if (!paused) {
       setCustomView(null);
     }
@@ -68,28 +58,8 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
 
     let frameId: number;
 
-    const render = (time: number) => {
-      // Collect sample if not paused
-      if (isCollecting) {
-        const st = engine.state;
-        globalSamples.push({
-          t: time,
-          v: st.v,
-          idx: st.running && st.phase === 'index' && !st.draining,
-          fill: st.fillFlash > 0,
-          weigh: st.weighFlash > 0,
-          seal: st.sealFlash > 0,
-          label: st.labelFlash > 0,
-          gate: st.gateFlash > 0,
-          low: st.supplyLow,
-          reg: st.regFlash > 0 || st.braking,
-        });
-        // Prune old samples
-        const cutoff = time - MAX_HISTORY_MS;
-        while (globalSamples.length > 0 && globalSamples[0].t < cutoff) {
-          globalSamples.shift();
-        }
-      }
+    const render = () => {
+      const samples = engine.scopeTrace;
 
       // Draw
       const w = canvas.width;
@@ -107,13 +77,14 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       }
 
-      if (globalSamples.length < 2) {
+      if (samples.length < 2) {
         frameId = requestAnimationFrame(render);
         return;
       }
 
-      const lastSampleTime = globalSamples[globalSamples.length - 1].t;
-      const now = isCollecting ? time : lastSampleTime;
+      // View anchor: newest machine time while live, frozen while paused.
+      if (!paused) frozenNowRef.current = samples[samples.length - 1].t;
+      const now = frozenNowRef.current;
 
       let tMin = now - timeSpan;
       let tMax = now;
@@ -134,20 +105,20 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
 
       // Filter visible samples
       let startIndex = 0;
-      let endIndex = globalSamples.length - 1;
-      for (let i = 0; i < globalSamples.length; i++) {
-        if (globalSamples[i].t >= tMin) {
+      let endIndex = samples.length - 1;
+      for (let i = 0; i < samples.length; i++) {
+        if (samples[i].t >= tMin) {
           startIndex = Math.max(0, i - 1);
           break;
         }
       }
-      for (let i = startIndex; i < globalSamples.length; i++) {
-        if (globalSamples[i].t > tMax) {
+      for (let i = startIndex; i < samples.length; i++) {
+        if (samples[i].t > tMax) {
           endIndex = i;
           break;
         }
       }
-      const visibleSamples = globalSamples.slice(startIndex, endIndex + 1);
+      const visibleSamples = samples.slice(startIndex, endIndex + 1);
 
       if (visibleSamples.length > 0) {
         // Analog track: chain velocity
@@ -173,7 +144,7 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
       // Digital tracks
       let yOffset = 25 + analogH + 30;
 
-      const drawDigital = (label: string, color: string, valueFn: (s: Sample) => boolean) => {
+      const drawDigital = (label: string, color: string, valueFn: (s: ScopeSample) => boolean) => {
         ctx.fillStyle = color;
         ctx.fillText(label, 5, yOffset - 5);
         ctx.strokeStyle = color;
@@ -219,15 +190,16 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
   // Compute cursor data
   useEffect(() => {
     const updateCursorData = () => {
-      if (globalSamples.length < 2) return;
+      const samples = engine.scopeTrace;
+      if (samples.length < 2) return;
       const { tMin, tMax } = currentViewRef.current;
       const vSpan = Math.max(1, tMax - tMin);
 
       const getSampleAtPixel = (px: number) => {
         const t = tMin + (px / (canvasRef.current?.width || 1)) * vSpan;
-        let closest = globalSamples[0];
+        let closest = samples[0];
         let minDist = Infinity;
-        for (const s of globalSamples) {
+        for (const s of samples) {
           const d = Math.abs(s.t - t);
           if (d < minDist) {
             minDist = d;
@@ -319,15 +291,15 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const getSignalValue = (s: Sample, sig: string) => {
+  const getSignalValue = (s: ScopeSample, sig: string) => {
     if (sig === 'v') return s.v.toFixed(1) + ' mm/s';
-    const val = s[sig as keyof Sample];
+    const val = s[sig as keyof ScopeSample];
     return typeof val === 'boolean' ? (val ? '1' : '0') : '-';
   };
 
-  const getSignalNum = (s: Sample, sig: string) => {
+  const getSignalNum = (s: ScopeSample, sig: string) => {
     if (sig === 'v') return s.v;
-    const val = s[sig as keyof Sample];
+    const val = s[sig as keyof ScopeSample];
     return typeof val === 'boolean' ? (val ? 1 : 0) : 0;
   };
 

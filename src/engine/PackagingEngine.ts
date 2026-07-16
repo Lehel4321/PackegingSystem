@@ -1,4 +1,4 @@
-import { Recipe, ProcessParams, MachineConfig, Order, Carton, OutCarton, LogEntry, MachineState } from '../types';
+import { Recipe, ProcessParams, MachineConfig, Order, Carton, OutCarton, LogEntry, MachineState, ScopeSample } from '../types';
 import { OB1_CyclicScan } from './OB1_Main';
 import { stopDistance, computeMove, movePeakV, rampDistance } from './MotionProfile';
 import { FC_Layout } from './FC_Layout';
@@ -83,7 +83,12 @@ export class PackagingEngine {
     hasWeigher: true, hasLabeler: true,
     hasHopperSensor: true, hopperLowAt: 24,
     hasReg: true, regConst: 2, regOver: 20, regApproachSpeed: 500,
-    axVmax: 2000, axAmax: 20000, axJerk: 200000, // index axis servo data
+    // Index axis servo data. Deliberately moderate dynamics: the accel
+    // ramp takes ~0.23 s, so the jerk-limited S-curve is actually
+    // VISIBLE on the scope instead of collapsing into a near-vertical
+    // edge (a chain with cartons is a heavy load — stiff drives shake
+    // the product out of the cartons anyway).
+    axVmax: 2000, axAmax: 8000, axJerk: 60000,
   };
 
   // --- Data Block: MATERIAL (product supply) ---
@@ -122,6 +127,15 @@ export class PackagingEngine {
   public outfeed: OutCarton[] = []; // on the outfeed belt
   public log: LogEntry[] = [];
   public cartonSeq = 0;
+
+  /**
+   * PLC trace recorder buffer (ring, ~2 minutes at 4 ms). Filled by
+   * OB1 Network 0 at scan resolution — the HMI scope only READS it.
+   * Sampling in the PLC instead of the render loop is what lets the
+   * scope show the true S-curve of the servo ramps.
+   */
+  public scopeTrace: ScopeSample[] = [];
+  public traceScan = 0;
 
   // --- HMI Event System (not PLC logic) ---
   private listeners: Set<() => void> = new Set();
@@ -405,6 +419,8 @@ export class PackagingEngine {
     this.log = [];
     this.cartonSeq = 0;
     this.state.simTime = 0;
+    this.scopeTrace = []; // machine time restarts -> old trace is invalid
+    this.traceScan = 0;
     this.hopperRemaining = Infinity;
     this.state.supplyLow = false;
     this.nextBadCount = 0;
@@ -528,8 +544,8 @@ export class PackagingEngine {
     c.regApproachSpeed = Math.min(REG_APPROACH_CAP,
       Math.max(25, Number.isFinite(c.regApproachSpeed) ? c.regApproachSpeed : 500));
     c.axVmax = Math.max(50, c.axVmax || 2000);
-    c.axAmax = Math.max(500, c.axAmax || 20000);
-    c.axJerk = Math.max(5000, c.axJerk || 200000);
+    c.axAmax = Math.max(500, c.axAmax || 8000);
+    c.axJerk = Math.max(5000, c.axJerk || 60000);
     // carton/label clamps may have changed with the pitch or label width
     this.updateRecipeClampOnly();
     this.notify();

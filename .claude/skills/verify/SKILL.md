@@ -18,8 +18,9 @@ Chromium is pre-installed at `/opt/pw-browsers/chromium`; install the
 `executablePath: '/opt/pw-browsers/chromium'`.
 
 Flows worth driving:
-1. **Happy path**: click `Control On` → `▶ Start`; after ~14 s the
-   Packed tile should read ≥ 5 (cycle ≈ 2 s). Screenshot the canvas.
+1. **Happy path**: click `Control On` → `▶ Start`; after ~15 s the
+   Packed tile should read ≥ 2 (cycle ≈ 2.1 s; the first carton needs
+   ~12 s through all six slots + outfeed). Screenshot the canvas.
 2. **Quality gate**: click `Inject Bad Product` while running → within
    ~12 s Rejects increments and the Packing history tab shows a red
    `✕ weight` row (deviation ≈ −60 g at default recipe).
@@ -32,9 +33,12 @@ Flows worth driving:
    Eye → Tuning → Chain Slip 5 → run: cartons drift (Δ readout) and
    reject `misplaced` (canvas text only — check the Rejects tile, not
    body.innerText). Re-enable the eye: no new rejects at same slip.
-6. **Scope**: `◉ Scope` shows S-curve velocity humps + digital pulse
-   tracks. Close via the overlay's ✕ (the overlay covers the header
-   toggle — clicking the header button times out).
+6. **Scope**: `◉ Scope` shows smooth S-curve velocity humps with a
+   visible approach-speed shoulder + digital pulse tracks. The trace is
+   recorded by OB1 at 4 ms (engine.scopeTrace, machine-time axis) — if
+   the ramps ever look like vertical jumps, someone re-introduced
+   HMI-framerate sampling. Close via the overlay's ✕ (the overlay
+   covers the header toggle — clicking the header button times out).
 
 ## Gotchas
 

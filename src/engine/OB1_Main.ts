@@ -50,6 +50,29 @@ export function OB1_CyclicScan(db: PackagingEngine, dt: number) {
   if (st.regFlash > 0) st.regFlash -= dt;
   if (st.gateFlash > 0) st.gateFlash -= dt;
 
+  // Network 1a: PLC trace recorder for the HMI scope. A real drive
+  // scope records inside the PLC cycle, never at the HMI refresh —
+  // sampling the servo ramps at screen framerate would alias the
+  // S-curve into fake instant jumps. Every 4th scan = 4 ms resolution.
+  db.traceScan++;
+  if (db.traceScan >= 4) {
+    db.traceScan = 0;
+    db.scopeTrace.push({
+      t: st.simTime * 1000,
+      v: st.v,
+      idx: st.phase === 'index' && !st.draining,
+      fill: st.fillFlash > 0,
+      weigh: st.weighFlash > 0,
+      seal: st.sealFlash > 0,
+      label: st.labelFlash > 0,
+      gate: st.gateFlash > 0,
+      low: st.supplyLow,
+      reg: st.regFlash > 0 || st.braking,
+    });
+    // Ring buffer: keep the last ~2 minutes (30 000 samples at 4 ms).
+    if (db.scopeTrace.length > 33000) db.scopeTrace.splice(0, db.scopeTrace.length - 30000);
+  }
+
   // Network 1b: Draining phase of a graceful stop. The chain is empty
   // and stands still; only the outfeed belt runs, carrying the last
   // cartons to the gate. When the outfeed is empty, the line goes idle.
