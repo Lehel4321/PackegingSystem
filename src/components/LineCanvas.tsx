@@ -262,7 +262,6 @@ export function LineCanvas() {
         vline(ctx, rx, chainTop - 6, chainTop + 14, c, 1.5);
         ctx.fillStyle = c;
         ctx.beginPath(); ctx.arc(rx, chainTop - 10, 3, 0, Math.PI * 2); ctx.fill();
-        txt(ctx, rx, chainTop - 18, 'REG EYE @' + engine.regSensorPos().toFixed(1) + (sensing ? ' ●' : ''), sensing ? '#22d3ee' : '#0e7490');
       }
       if (st.regFault) {
         txt(ctx, X(slots[2]), yc - 148, '⚠ REGISTRATION FAULT — eye did not confirm within the travel budget', '#f97316');
@@ -277,6 +276,14 @@ export function LineCanvas() {
         if (Math.abs(off) > 1) {
           txt(ctx, X(c.x), yc + 36, 'Δ' + off.toFixed(1), Math.abs(off) > engine.config.alignTol ? '#ef4444' : '#eab308');
         }
+      }
+
+      // registration eye caption: drawn after the cartons so a carton passing
+      // the eye does not hide it (the caption sits within the carton height)
+      if (engine.config.hasReg) {
+        const rx = X(slots[SLOT.LABEL] + g.pitch / 2);
+        const sensing = st.regFlash > 0 || st.braking;
+        txt(ctx, rx, chainTop - 18, 'REG EYE @' + engine.regSensorPos().toFixed(1) + (sensing ? ' ●' : ''), sensing ? '#22d3ee' : '#0e7490');
       }
 
       // ---- reject pusher station (before the belt end) + reject lane ----
@@ -356,7 +363,23 @@ export function LineCanvas() {
         : st.draining ? 'DRAINING'
         : st.phase === 'index' ? 'INDEXING' : 'PROCESS DWELL';
       txt(ctx, X(axisMin) + 2, 18, phaseStr, st.running ? '#34d399' : '#64748b', 'left');
-      txt(ctx, X(axisMin) + 2, 33, 'D ' + st.D.toFixed(1) + 'mm · v ' + st.v.toFixed(0) + 'mm/s · drift ' + engine.drift.toFixed(2) + 'mm', '#475569', 'left');
+      // Full text stays as-is; only when it would run past the right edge
+      // (phone width) fall back to a unit-less text, then a smaller font.
+      const sx = X(axisMin) + 2;
+      const fullStr = 'D ' + st.D.toFixed(1) + 'mm · v ' + st.v.toFixed(0) + 'mm/s · drift ' + engine.drift.toFixed(2) + 'mm';
+      const shortStr = 'D ' + st.D.toFixed(1) + ' · v ' + st.v.toFixed(0) + ' · drift ' + engine.drift.toFixed(2);
+      const room = g.w - sx - 4;
+      let statStr = fullStr, statPx = 11;
+      ctx.font = '11px ui-monospace';
+      if (ctx.measureText(fullStr).width > room) {
+        statStr = shortStr;
+        while (statPx > 7) {
+          ctx.font = statPx + 'px ui-monospace';
+          if (ctx.measureText(shortStr).width <= room) break;
+          statPx--;
+        }
+      }
+      txt(ctx, sx, 33, statStr, '#475569', 'left', statPx);
 
       frameId = requestAnimationFrame(render);
     }
