@@ -11,9 +11,9 @@ function vline(ctx: CanvasRenderingContext2D, x: number, y0: number, y1: number,
   ctx.stroke();
 }
 
-function txt(ctx: CanvasRenderingContext2D, x: number, y: number, t: string, c: string, a: CanvasTextAlign = 'center') {
+function txt(ctx: CanvasRenderingContext2D, x: number, y: number, t: string, c: string, a: CanvasTextAlign = 'center', px: number = 11) {
   ctx.fillStyle = c;
-  ctx.font = '11px ui-monospace';
+  ctx.font = px + 'px ui-monospace';
   ctx.textAlign = a;
   ctx.fillText(t, x, y);
 }
@@ -62,7 +62,7 @@ function drawCarton(
     const px = x0 + 4 + i * cell + cell / 2;
     ctx.fillStyle = fills[i].bad ? '#ef4444' : '#38bdf8';
     ctx.beginPath();
-    ctx.arc(px, yc + 6, Math.min(5, cell / 2 - 1), 0, Math.PI * 2);
+    ctx.arc(px, yc + 6, Math.max(1, Math.min(5, cell / 2 - 1)), 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -139,16 +139,29 @@ export function LineCanvas() {
       const ry = g.h - 22; // ruler baseline
       const cartonW = engine.recipe.cartonLen * pxPerMm;
 
+      // Narrow canvas (phone): the slot pitch gets shorter than the station
+      // names, so labels are staggered on two rows, smaller and abbreviated,
+      // and the secondary captions are shortened. Desktop is unaffected.
+      ctx.font = '11px ui-monospace';
+      const slotPx = g.pitch * pxPerMm;
+      const nameW = (i: number) => ctx.measureText(STATION_META[i].name + ' (n/a)').width;
+      const tight = STATION_META.some((_, i) => i > 0 && (nameW(i - 1) + nameW(i)) / 2 + 6 > slotPx);
+      const fs = tight ? 9 : 11;
+
       // ruler
       ctx.strokeStyle = '#1c2736';
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(X(axisMin), ry); ctx.lineTo(X(axisMax), ry); ctx.stroke();
       const step = niceStep(axisMax - axisMin);
       const st0 = Math.ceil(axisMin / step) * step;
+      // label only every n-th tick when the numbers would collide
+      const every = Math.max(1, Math.ceil((ctx.measureText(fmt(axisMax)).width + 6) / (step * pxPerMm)));
       for (let mm = st0; mm <= axisMax + 0.1; mm += step) {
         const z = Math.abs(mm) < 0.01;
         vline(ctx, X(mm), ry, ry + (z ? 9 : 5), z ? '#e2e8f0' : '#334155', z ? 2 : 1);
-        txt(ctx, X(mm), ry + 16, z ? '0' : fmt(mm), z ? '#cbd5e1' : '#64748b');
+        if (Math.round(mm / step) % every === 0) {
+          txt(ctx, X(mm), ry + 16, z ? '0' : fmt(mm), z ? '#cbd5e1' : '#64748b');
+        }
       }
 
       // ---- indexing chain (slot 0 .. discharge) ----
@@ -164,7 +177,7 @@ export function LineCanvas() {
         ctx.fillRect(X(mm), chainTop + 2, 2, 5);
       }
       txt(ctx, (X(slots[0]) + X(outStart)) / 2, chainTop + 24,
-        'INDEX CHAIN · pitch ' + g.pitch + 'mm · ' + toMMin(st.v).toFixed(1) + ' m/min', '#64748b');
+        (tight ? 'CHAIN ' : 'INDEX CHAIN · pitch ' + g.pitch + 'mm · ') + toMMin(st.v).toFixed(1) + ' m/min', '#64748b', 'center', fs);
 
       // ---- outfeed belt ----
       const beltPhase = (st.beltScroll * pxPerMm) % 18;
@@ -175,7 +188,7 @@ export function LineCanvas() {
         ctx.beginPath(); ctx.moveTo(x, chainTop + 2); ctx.lineTo(x + 5, chainTop + 4.5); ctx.lineTo(x, chainTop + 7); ctx.fill();
       }
       txt(ctx, (X(outStart) + X(outEnd)) / 2, chainTop + 24,
-        'OUTFEED · ' + engine.config.outLen + 'mm  (' + toMMin(engine.outSpeed()).toFixed(0) + ' m/min)', '#64748b');
+        tight ? 'OUTFEED' : 'OUTFEED · ' + engine.config.outLen + 'mm  (' + toMMin(engine.outSpeed()).toFixed(0) + ' m/min)', '#64748b', 'center', fs);
 
       // ---- station boxes ----
       const stationActive: Record<string, boolean> = {
@@ -204,7 +217,9 @@ export function LineCanvas() {
         ctx.setLineDash(on ? [] : [4, 4]);
         ctx.strokeRect(bx, yc - 66, bw, 34);
         ctx.setLineDash([]);
-        txt(ctx, X(mm), yc - 72, meta.name + (on ? (act ? ' ●' : '') : ' (n/a)'), on ? meta.line : '#475569');
+        const name = tight && meta.key === 'out' ? 'DISCH' : meta.name;
+        const tag = on ? (act ? ' ●' : '') : (tight ? '' : ' (n/a)'); // dashed box already says n/a
+        txt(ctx, X(mm), yc - (tight && i % 2 ? 84 : 72), name + tag, on ? meta.line : '#475569', 'center', fs);
         // tool symbol descending from the box while acting
         if (on && act && i !== SLOT.ERECT && i !== SLOT.DISCHARGE) {
           vline(ctx, X(mm), yc - 32, yc - 26, meta.line, 3);
@@ -247,7 +262,6 @@ export function LineCanvas() {
         vline(ctx, rx, chainTop - 6, chainTop + 14, c, 1.5);
         ctx.fillStyle = c;
         ctx.beginPath(); ctx.arc(rx, chainTop - 10, 3, 0, Math.PI * 2); ctx.fill();
-        txt(ctx, rx, chainTop - 18, 'REG EYE @' + engine.regSensorPos().toFixed(1) + (sensing ? ' ●' : ''), sensing ? '#22d3ee' : '#0e7490');
       }
       if (st.regFault) {
         txt(ctx, X(slots[2]), yc - 148, '⚠ REGISTRATION FAULT — eye did not confirm within the travel budget', '#f97316');
@@ -262,6 +276,14 @@ export function LineCanvas() {
         if (Math.abs(off) > 1) {
           txt(ctx, X(c.x), yc + 36, 'Δ' + off.toFixed(1), Math.abs(off) > engine.config.alignTol ? '#ef4444' : '#eab308');
         }
+      }
+
+      // registration eye caption: drawn after the cartons so a carton passing
+      // the eye does not hide it (the caption sits within the carton height)
+      if (engine.config.hasReg) {
+        const rx = X(slots[SLOT.LABEL] + g.pitch / 2);
+        const sensing = st.regFlash > 0 || st.braking;
+        txt(ctx, rx, chainTop - 18, 'REG EYE @' + engine.regSensorPos().toFixed(1) + (sensing ? ' ●' : ''), sensing ? '#22d3ee' : '#0e7490');
       }
 
       // ---- reject pusher station (before the belt end) + reject lane ----
@@ -341,7 +363,23 @@ export function LineCanvas() {
         : st.draining ? 'DRAINING'
         : st.phase === 'index' ? 'INDEXING' : 'PROCESS DWELL';
       txt(ctx, X(axisMin) + 2, 18, phaseStr, st.running ? '#34d399' : '#64748b', 'left');
-      txt(ctx, X(axisMin) + 2, 33, 'D ' + st.D.toFixed(1) + 'mm · v ' + st.v.toFixed(0) + 'mm/s · drift ' + engine.drift.toFixed(2) + 'mm', '#475569', 'left');
+      // Full text stays as-is; only when it would run past the right edge
+      // (phone width) fall back to a unit-less text, then a smaller font.
+      const sx = X(axisMin) + 2;
+      const fullStr = 'D ' + st.D.toFixed(1) + 'mm · v ' + st.v.toFixed(0) + 'mm/s · drift ' + engine.drift.toFixed(2) + 'mm';
+      const shortStr = 'D ' + st.D.toFixed(1) + ' · v ' + st.v.toFixed(0) + ' · drift ' + engine.drift.toFixed(2);
+      const room = g.w - sx - 4;
+      let statStr = fullStr, statPx = 11;
+      ctx.font = '11px ui-monospace';
+      if (ctx.measureText(fullStr).width > room) {
+        statStr = shortStr;
+        while (statPx > 7) {
+          ctx.font = statPx + 'px ui-monospace';
+          if (ctx.measureText(shortStr).width <= room) break;
+          statPx--;
+        }
+      }
+      txt(ctx, sx, 33, statStr, '#475569', 'left', statPx);
 
       frameId = requestAnimationFrame(render);
     }
