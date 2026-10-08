@@ -17,11 +17,12 @@ import { PackagingEngine } from './PackagingEngine';
  * POSITION MEASUREMENT.
  *
  * Unlike the encoder (D), which drifts under chain slip, the eye sees
- * the PHYSICAL chain travel (db.state.mvTip). When the lug reaches the
+ * the PHYSICAL chain travel (db.regLugTravel(): this move's mvTip plus
+ * the drift left over from earlier moves). When the lug reaches the
  * trip point, the PLC re-syncs its tracking and latches the corrected
  * stop target so the carton lands exactly on the slot center:
  *
- *     brakeD = D + (pitch − physical travel) / (1 − slip estimate)
+ *     brakeD = D + (pitch − lug travel) / (1 − slip estimate)
  *
  * The live slip estimate is a touch-probe correction: the eye tells us
  * the true position, the encoder tells us how far the drive turned —
@@ -47,9 +48,10 @@ export function FC_Registration(db: PackagingEngine) {
 
   // Network 2: physical lug crossed the eye -> raise the input, correct
   // the stop target with the TRUE chain position.
-  if (st.mvTip >= pos) {
+  const lug = db.regLugTravel();
+  if (lug >= pos) {
     const slipEst = st.mvD > 1 ? Math.min(0.3, Math.max(0, 1 - st.mvTip / st.mvD)) : 0;
-    const remEnc = (db.config.pitch - st.mvTip) / (1 - slipEst);
+    const remEnc = (db.config.pitch - lug) / (1 - slipEst);
 
     st.braking = true;
     st.brakeD = st.D + Math.max(0, remEnc);

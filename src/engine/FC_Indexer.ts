@@ -63,7 +63,7 @@ export function FC_Indexer(db: PackagingEngine, dt: number) {
 
   // Phase 2: reactively ramp down to the approach speed BEFORE the eye.
   if (regActive && !st.braking) {
-    const remToEye = db.regSensorPos() - st.mvTip;
+    const remToEye = db.regSensorPos() - db.regLugTravel();
     const approachV = db.regApproachV();
     if (remToEye > 0 && commitRampDist(st.v, st.a, approachV, A, J) >= remToEye) {
       if (approachV < vt) vt = approachV;
@@ -87,9 +87,13 @@ export function FC_Indexer(db: PackagingEngine, dt: number) {
   if (st.v < 0) { st.v = 0; st.a = 0; } // the chain never runs backwards
 
   // Network 3: Advance the encoder position. While braking on the
-  // corrected target, never overshoot it.
+  // corrected target — or on any move the eye does not steer — never
+  // overshoot it. (Without the clamp, the final creep onto the target
+  // overshot by ~0.05 mm per index; each move is targeted relative to
+  // the actual position, so that error accumulated until cartons were
+  // 'misplaced' after ~200 indexes with zero slip.)
   let dD = st.v * dt;
-  if (st.braking) dD = Math.min(dD, Math.max(0, st.brakeD - st.D));
+  if (st.braking || !regActive) dD = Math.min(dD, Math.max(0, st.brakeD - st.D));
   st.D += dD;
   st.mvD += dD;
 
