@@ -249,6 +249,19 @@ export class PackagingEngine {
    */
   public regDecelStart() { return this.regSensorPos() - this.regRampDist(); }
 
+  /**
+   * Physical lug travel into the current move AS THE EYE SEES IT: the
+   * move's own physical travel plus the chain drift left over from
+   * earlier moves (wrapped to the nearest lug, like FC_Erector). The eye
+   * sits at a fixed machine position, so it measures the lug's TRUE
+   * position — a residual error from the last index is corrected on the
+   * next one instead of accumulating.
+   */
+  public regLugTravel() {
+    const lugOff = this.drift - Math.round(this.drift / this.config.pitch) * this.config.pitch;
+    return this.state.mvTip + lugOff;
+  }
+
   // --- Scan Cycle Accumulator (real time -> fixed 1 ms scans) ---
   private scanAcc = 0;
 

@@ -80,6 +80,7 @@ Tuning** (dwells and gains, editable any time), **Machine Build**
 npm install
 npm run dev     # http://localhost:3001 (3000 is usually taken by CuttingMaschine)
 npm run lint    # typecheck
+npm test        # vitest: engine / PLC core unit tests
 npm run build
 ```
 

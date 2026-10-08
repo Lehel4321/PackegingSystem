@@ -151,6 +151,19 @@ export function rampDistance(v1: number, v2: number, amax: number, jmax: number)
 }
 
 /**
+ * Distance covered while the current acceleration a is ramped to zero
+ * at constant jerk (time tR = |a|/j). Velocity is a parabola in time
+ * here, not a line — v(t) = v + a·t − sign(a)·j·t²/2 — so the exact
+ * integral is used. (The mean of the end velocities underestimates it
+ * by |a|³/12j² while still accelerating: ~12 mm at the default motor
+ * data, which made un-registered high-speed indexes overshoot.)
+ */
+function accelRampDist(v: number, a: number, jmax: number): number {
+  const tR = Math.abs(a) / jmax;
+  return Math.max(v, 0) * tR + (a * tR * tR) / 2 - (Math.sign(a) * jmax * tR ** 3) / 6;
+}
+
+/**
  * Committed stopping distance from the current axis state (v, a): the
  * jerk limit means the current acceleration first has to be ramped to
  * zero — the axis gains a·|a|/2j of speed and covers distance meanwhile
@@ -159,10 +172,8 @@ export function rampDistance(v1: number, v2: number, amax: number, jmax: number)
  */
 export function commitStopDist(v: number, a: number, amax: number, jmax: number): number {
   if (jmax <= 0 || amax <= 0) return Infinity;
-  const tR = Math.abs(a) / jmax;
   const vAfter = Math.max(0, v + (a * Math.abs(a)) / (2 * jmax));
-  const dR = ((Math.max(v, 0) + vAfter) / 2) * tR;
-  return dR + stopDistance(vAfter, amax, jmax);
+  return accelRampDist(v, a, jmax) + stopDistance(vAfter, amax, jmax);
 }
 
 /**
@@ -177,11 +188,9 @@ export function commitStopDist(v: number, a: number, amax: number, jmax: number)
  */
 export function commitRampDist(v: number, a: number, vTarget: number, amax: number, jmax: number): number {
   if (jmax <= 0 || amax <= 0) return Infinity;
-  const tR = Math.abs(a) / jmax;
   const vAfter = v + (a * Math.abs(a)) / (2 * jmax);
   if (vAfter <= vTarget) return 0;
-  const dR = ((Math.max(v, 0) + vAfter) / 2) * tR;
-  return dR + rampDistance(vAfter, vTarget, amax, jmax);
+  return accelRampDist(v, a, jmax) + rampDistance(vAfter, vTarget, amax, jmax);
 }
 
 /**
