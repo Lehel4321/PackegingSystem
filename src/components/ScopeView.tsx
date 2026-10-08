@@ -310,7 +310,7 @@ export function ScopeView({ onClose }: { onClose: () => void }) {
         <button onClick={onClose} className="text-slate-500 hover:text-white cursor-pointer bg-transparent border-none text-xl">✕</button>
       </div>
 
-      <div className="flex gap-4 mb-4 items-center">
+      <div className="flex flex-wrap gap-4 mb-4 items-center">
         <button
           onClick={() => setPaused(!paused)}
           className={`px-4 py-2 rounded font-bold uppercase text-xs transition-colors cursor-pointer ${paused ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
