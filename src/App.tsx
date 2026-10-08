@@ -30,16 +30,16 @@ export default function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0b1017] text-[#dbe3ee] font-sans">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-[#1c2736] bg-[#0d1420] flex-shrink-0">
-        <div className="flex items-center gap-6">
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 sm:px-6 py-3 border-b border-[#1c2736] bg-[#0d1420] flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-2.5">
             <div className="w-3.5 h-3.5 rounded-full border-2 border-emerald-500 bg-emerald-500/30"></div>
-            <h1 className="text-lg font-bold tracking-tight uppercase m-0">
+            <h1 className="text-lg font-bold tracking-tight uppercase m-0 whitespace-nowrap">
               PackLine <span className="text-emerald-500">CP-6</span>
               <span className="text-slate-600 text-xs font-semibold ml-2">CARTON PACKER</span>
             </h1>
           </div>
-          <nav className="flex gap-2">
+          <nav className="flex flex-wrap gap-2">
             <TabBtn id="line" label="Line" />
             <TabBtn id="history" label="Packing history" />
             <TabBtn id="lab" label="FC Lab" />
@@ -65,7 +65,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="flex-1 p-5 overflow-auto">
+      <div className="flex-1 p-3 sm:p-5 overflow-auto">
         {tab === 'line' && (
           <div className="flex flex-col gap-4 mx-auto max-w-[1320px] relative">
             {showScope && <ScopeView onClose={() => setShowScope(false)} />}

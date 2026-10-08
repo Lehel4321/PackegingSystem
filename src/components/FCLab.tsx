@@ -295,9 +295,9 @@ export function FCLab() {
   const activeTabObj = tabs.find(t => t.id === activeFC);
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-150px)]">
+    <div className="flex flex-col md:flex-row gap-6 md:h-[calc(100vh-150px)]">
       {/* Sidebar */}
-      <div className="w-64 bg-[#0d1420] border border-[#1c2736] rounded-xl flex flex-col overflow-hidden flex-shrink-0">
+      <div className="w-full md:w-64 max-h-64 md:max-h-none bg-[#0d1420] border border-[#1c2736] rounded-xl flex flex-col overflow-hidden flex-shrink-0">
         <div className="bg-[#1c2736] px-4 py-2 font-bold text-xs uppercase tracking-wider text-slate-300">
           Function Blocks (FC)
         </div>
@@ -315,8 +315,8 @@ export function FCLab() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col gap-4">
-        <div className="bg-[#0d1420] border border-[#1c2736] rounded-xl p-4 flex justify-between items-start">
+      <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <div className="bg-[#0d1420] border border-[#1c2736] rounded-xl p-4 flex flex-wrap justify-between items-start gap-3">
           <div>
             <h2 className="text-lg font-bold text-white mb-1 font-mono">{activeTabObj?.name}</h2>
             <p className="text-sm text-slate-400">{activeTabObj?.desc}</p>
@@ -329,7 +329,7 @@ export function FCLab() {
           </button>
         </div>
 
-        <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
           <div className="bg-[#0d1420] border border-[#1c2736] rounded-xl p-4 flex flex-col overflow-hidden">
             <h3 className="text-xs uppercase font-bold text-slate-500 mb-2">FC Output Data</h3>
             <div className="flex-1 overflow-auto bg-[#0b1017] rounded p-3 border border-[#1c2736]">
